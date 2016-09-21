@@ -6,7 +6,7 @@
        
         <group key="example_group">
            <operator>
-              <key>example_operator_key</key>
+              <key>readpositionalfile</key>
               <class>com.rapidminer.operator.ReadFilePositional</class>
            </operator>
          </group>

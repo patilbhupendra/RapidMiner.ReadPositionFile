@@ -5,7 +5,6 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -18,6 +17,7 @@ import com.rapidminer.example.table.MemoryExampleTable;
 import com.rapidminer.operator.io.AbstractReader;
 import com.rapidminer.parameter.ParameterType;
 import com.rapidminer.parameter.ParameterTypeFile;
+import com.rapidminer.parameter.ParameterTypeList;
 import com.rapidminer.parameter.ParameterTypeString;
 import com.rapidminer.parameter.ParameterTypeStringCategory;
 import com.rapidminer.tools.Ontology;
@@ -27,7 +27,8 @@ import com.rapidminer.tools.io.Encoding;
 public class ReadFilePositional extends AbstractReader<ExampleSet> {
 
 	MemoryExampleTable table;
-	int[] int_positions = null;
+	// int[] int_positions = null;
+	List<String[]> pairs = null;
 
 	public ReadFilePositional(OperatorDescription description) {
 		super(description, ExampleSet.class);
@@ -38,18 +39,20 @@ public class ReadFilePositional extends AbstractReader<ExampleSet> {
 	public ExampleSet read() throws OperatorException {
 		// TODO Auto-generated method stub
 		String fileName = getParameterAsString("FILE_PATH");
-		String partitions = getParameterAsString("POSITIONS");
+		// String partitions = getParameterAsString("POSITIONS");
+
+		pairs = getParameterList("PARAMETER_COL_NAME_PAIRS");
 
 		String charsetName = getParameterAsString("PARAMETER_ENCODING");
 
 		Charset charSet = Encoding.getEncoding(charsetName);
 
-		List<String> positions = Arrays.asList(partitions.split(","));
-		int_positions = new int[positions.size()];
+		// List<String> positions = Arrays.asList(partitions.split(","));
+		// int_positions = new int[positions.size()];
 		// position.forEach(arg0);
-		for (int i = 0; i < positions.size(); i++) {
-			int_positions[i] = Integer.parseInt(positions.get(i));
-		}
+		// for (int i = 0; i < positions.size(); i++) {
+		// int_positions[i] = Integer.parseInt(positions.get(i));
+		// }
 		String thisline = "";
 
 		table = createTable();
@@ -58,22 +61,23 @@ public class ReadFilePositional extends AbstractReader<ExampleSet> {
 
 			stream.forEach(currentline -> splitandAdd(currentline));
 
+			stream.close();
 			return table.createExampleSet();
 
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
+			// stream.close();
 			e.printStackTrace();
 		}
-
 		return null;
 	}
 
 	private MemoryExampleTable createTable() {
 		ArrayList<Attribute> attributes = new ArrayList<Attribute>();
 
-		for (int i = 0; i < int_positions.length - 1; i++) {
-			Attribute attribute = AttributeFactory.createAttribute("column"
-					+ String.valueOf(i), Ontology.POLYNOMINAL);
+		for (int i = 0; i < pairs.size(); i++) {
+			Attribute attribute = AttributeFactory.createAttribute(
+					pairs.get(i)[0], Ontology.POLYNOMINAL);
 			attributes.add(attribute);
 
 		}
@@ -82,18 +86,33 @@ public class ReadFilePositional extends AbstractReader<ExampleSet> {
 		return table;
 	}
 
+	private int getMaxNumberofCharacters() {
+		int maxvalue = 0;
+		for (int i = 0; i < pairs.size() - 1; i++) {
+
+			if (Integer.parseInt(pairs.get(i)[1].split(",")[1]) > maxvalue) {
+				maxvalue = Integer.parseInt(pairs.get(i)[1].split(",")[1]);
+			}
+		}
+		return maxvalue;
+	}
+
 	private void splitandAdd(String currentline) {
 
-		int numberOfColumns = int_positions.length - 1;
+		int numberOfColumns = pairs.size() - 1;
 		double[] values = new double[numberOfColumns];
-
-		for (int i = 0; i < int_positions.length - 1; i++) {
+		int maxvalue = getMaxNumberofCharacters();
+		for (int i = 0; i < numberOfColumns; i++) {
+			// todo pad to the max
 			// currentline.format(format, args)
-			currentline = String.format("%-"
-					+ int_positions[int_positions.length - 1] + "s",
-					currentline);
-			String currentValue = currentline.substring(int_positions[i],
-					int_positions[i + 1]);
+			currentline = String.format("%-" + maxvalue + "s", currentline);
+			int startposition = Integer.parseInt(pairs.get(i)[1].split(",")[0]
+					.trim());
+			int endposition = Integer.parseInt(pairs.get(i)[1].split(",")[1]
+					.trim());
+
+			String currentValue = currentline.substring(startposition,
+					endposition);
 			values[i] = table.getAttribute(i).getMapping()
 					.mapString(currentValue);
 
@@ -109,9 +128,18 @@ public class ReadFilePositional extends AbstractReader<ExampleSet> {
 				"Enter the PATH OF FILE", "", false);
 		types.add(filepath);
 
-		ParameterTypeString positions = new ParameterTypeString("POSITIONS",
-				"Enter the positions");
-		types.add(positions);
+		// ParameterTypeString positions = new ParameterTypeString("POSITIONS",
+		// "Enter the positions");
+		// types.add(positions);
+
+		ParameterTypeList type = new ParameterTypeList(
+				"PARAMETER_COL_NAME_PAIRS", "Position of Columns.",
+				new ParameterTypeString("PARAMETER_COLUMN_NAME",
+						"The Column Name."), new ParameterTypeString(
+						"PARAMETER_POSITION", "Start and end position.", false));
+
+		types.add(type);
+
 		final String[] CHARSETS = Encoding.CHARSETS;
 
 		String encoding = RapidMiner.SYSTEM_ENCODING_NAME;
@@ -127,5 +155,4 @@ public class ReadFilePositional extends AbstractReader<ExampleSet> {
 		return types;
 
 	}
-
 }
