@@ -16,6 +16,7 @@ import com.rapidminer.example.table.DoubleArrayDataRow;
 import com.rapidminer.example.table.MemoryExampleTable;
 import com.rapidminer.operator.io.AbstractReader;
 import com.rapidminer.parameter.ParameterType;
+import com.rapidminer.parameter.ParameterTypeBoolean;
 import com.rapidminer.parameter.ParameterTypeFile;
 import com.rapidminer.parameter.ParameterTypeList;
 import com.rapidminer.parameter.ParameterTypeString;
@@ -29,6 +30,7 @@ public class ReadFilePositional extends AbstractReader<ExampleSet> {
 	MemoryExampleTable table;
 	// int[] int_positions = null;
 	List<String[]> pairs = null;
+	boolean trimFlag = true;
 
 	public ReadFilePositional(OperatorDescription description) {
 		super(description, ExampleSet.class);
@@ -42,6 +44,7 @@ public class ReadFilePositional extends AbstractReader<ExampleSet> {
 		// String partitions = getParameterAsString("POSITIONS");
 
 		pairs = getParameterList("PARAMETER_COL_NAME_PAIRS");
+		trimFlag = getParameterAsBoolean("PARAMETER_TRIM");
 
 		String charsetName = getParameterAsString("PARAMETER_ENCODING");
 
@@ -99,7 +102,7 @@ public class ReadFilePositional extends AbstractReader<ExampleSet> {
 
 	private void splitandAdd(String currentline) {
 
-		int numberOfColumns = pairs.size() - 1;
+		int numberOfColumns = pairs.size();
 		double[] values = new double[numberOfColumns];
 		int maxvalue = getMaxNumberofCharacters();
 		for (int i = 0; i < numberOfColumns; i++) {
@@ -113,8 +116,14 @@ public class ReadFilePositional extends AbstractReader<ExampleSet> {
 
 			String currentValue = currentline.substring(startposition,
 					endposition);
-			values[i] = table.getAttribute(i).getMapping()
-					.mapString(currentValue);
+			if (trimFlag) {
+				values[i] = table.getAttribute(i).getMapping()
+						.mapString(currentValue.trim());
+
+			} else {
+				values[i] = table.getAttribute(i).getMapping()
+						.mapString(currentValue);
+			}
 
 		}
 
@@ -151,6 +160,9 @@ public class ReadFilePositional extends AbstractReader<ExampleSet> {
 		types.add(new ParameterTypeStringCategory("PARAMETER_ENCODING",
 				"The encoding used for reading or writing files.", CHARSETS,
 				encoding, false));
+
+		types.add(new ParameterTypeBoolean("PARAMETER_TRIM",
+				"Check to trim leading and trailing spaces", true, false));
 
 		return types;
 
